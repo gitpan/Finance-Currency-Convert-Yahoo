@@ -2,8 +2,8 @@ package Finance::Currency::Convert::Yahoo;
 
 use vars qw/$VERSION $DATE $CHAT %currencies/;
 
-$VERSION = 0.041;
-$DATE = "03 April 2003 21:02";
+$VERSION = 0.042;
+$DATE = "11 April 2003 21:02";
 
 =head1 NAME
 
@@ -127,7 +127,8 @@ sub convert { my ($amount, $from, $to) = (shift,shift,shift);
 	for my $attempt (0..3){
 		warn "Attempt $attempt ...\n" if $CHAT;
 		$doc = _get_document($amount,$from,$to);
-		# Can't say "last if defined $doc" as $doc may be a Yahoo 404-like error?
+		# Can't really say "last if defined $doc"
+		# as $doc may be a Yahoo 404-like error?
 		last if defined $doc;
 	}
 	if (defined $doc){
@@ -184,6 +185,7 @@ sub _get_document { my ($amount,$from,$to) = (shift,shift,shift);
 # PRIVATE SUB _extract_data
 # Accept: HTML doc as arg
 # Return amount on success, undef on failure
+# APR  2003: Data is now in SIXTH table, second row, second (non-header) cell, in bold
 # JAN  2003: Data is now in SEVENTH table, second row, second (non-header) cell, in bold
 # JULY 2001: Data is in fourth table's fourth TD
 # DEC  2001: Data is in FIFTH table
@@ -191,8 +193,8 @@ sub _get_document { my ($amount,$from,$to) = (shift,shift,shift);
 sub _extract_data { my $doc = shift;
 	my $token;
 	my $p = HTML::TokeParser->new(\$doc) or die "Couldn't create TokePraser: $!";
-	# Seventh TABLE
-	for (1..7){
+	# Sixth TABLE
+	for (1..6){
 		while ($token = $p->get_token
 			and not (@$token[0] eq 'S' and @$token[1] eq 'table')
 		){}
@@ -254,3 +256,4 @@ This library is free software and may be used only under the same terms as Perl 
 
 1;
 __END__
+

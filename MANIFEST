@@ -2,3 +2,4 @@ Makefile.PL
 MANIFEST
 test.pl
 Yahoo.pm
+CHANGES
