@@ -1,7 +1,7 @@
 package Finance::Currency::Convert::Yahoo;
 
-our $VERSION = 0.01;
-our $DATE = "Thur Jul 12 14:13:00 2001 BST";
+our $VERSION = 0.02;
+our $DATE = "Fri Jul 13 16:03:23 2001 BST";
 
 =head1 NAME
 
@@ -117,6 +117,7 @@ sub convert { my ($amount, $from, $to) = (shift,shift,shift);
 	warn "No such currency code as <$from>." and return undef if not exists $currencies{$from};
 	warn "No such currency code as <$to>." and return undef if not exists $currencies{$to};
 	warn "Please supply a positive sum to convert <received $amount>." and return undef if $amount<0;
+	warn "Converting <$amount> from <$from> to <$to> " if $CHAT;
 	my $result;
 	for my $attempt (0..3){
 		warn "Attempt $attempt ...\n" if $CHAT;
@@ -124,7 +125,8 @@ sub convert { my ($amount, $from, $to) = (shift,shift,shift);
 		$result = _extract_data($doc);
 		last if defined $result;
 	}
-	return $result;
+	warn "Result:$result\n" if defined $result;
+	return $amount * $result;
 }
 
 
