@@ -2,8 +2,8 @@ package Finance::Currency::Convert::Yahoo;
 
 use vars qw/$VERSION $DATE $CHAT %currencies/;
 
-$VERSION = 0.044;
-$DATE = "17 November 2004 18:15";
+$VERSION = 0.045;
+$DATE = "17 November 2004 18:20";
 
 =head1 NAME
 
@@ -141,9 +141,6 @@ sub convert { my ($amount, $from, $to) = (shift,shift,shift);
 		return $result;
 	} elsif (defined $doc and not defined $result){
 		carp "Connected to Yahoo but could not read the page: sorry" if defined $CHAT;
-open OUT,">C:/temp/yahoo.html";
-print OUT $doc;
-close OUT;
 		return undef;
 	} else {
 		carp "Could not connect to Yahoo" if defined $CHAT;
