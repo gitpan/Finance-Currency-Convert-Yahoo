@@ -2,8 +2,8 @@ package Finance::Currency::Convert::Yahoo;
 
 use vars qw/$VERSION $DATE $CHAT %currencies/;
 
-$VERSION = 0.042;
-$DATE = "11 April 2003 21:02";
+$VERSION = 0.043;
+$DATE = "03 June 2003 11:00";
 
 =head1 NAME
 
@@ -108,11 +108,11 @@ In the event that attempts to convert fail, you will recieve C<undef>
 in response, with errors going to STDERR, and notes displayed if
 the modules global C<$CHAT> is defined.
 
-In more detail, the module accesses C<http://finance.yahoo.com/m5?a=amount&s=start&t=to>,
+In more detail: the module accesses C<http://finance.yahoo.com/m5?a=amount&s=start&t=to>,
 where C<start> is the currency being converted, C<to> is the
 target currency, and C<amount> is the amount being converted.
 The latter is a number; the former two codes defined in our
-C<%currencies> hash. (Last checked 07 December 2001).
+C<%currencies> hash. (For the date this was last checked, C<print $DATE>).
 
 
 =cut
@@ -133,11 +133,11 @@ sub convert { my ($amount, $from, $to) = (shift,shift,shift);
 	}
 	if (defined $doc){
 		$result = _extract_data($doc);
-		warn "Got doc" if $CHAT;
+		warn "Got doc, result is $result" if $CHAT;
 	}
 	if (defined $doc and defined $result){
 		warn "Result:$result\n" if defined $result and defined $CHAT;
-		return $amount * $result;
+		return $result;
 	} elsif (defined $doc and not defined $result){
 		carp "Connected to Yahoo but could not read the page: sorry" if defined $CHAT;
 		return undef;
@@ -185,6 +185,7 @@ sub _get_document { my ($amount,$from,$to) = (shift,shift,shift);
 # PRIVATE SUB _extract_data
 # Accept: HTML doc as arg
 # Return amount on success, undef on failure
+# MAY  2003: Sloopy errors fixed. Sorry.
 # APR  2003: Data is now in SIXTH table, second row, second (non-header) cell, in bold
 # JAN  2003: Data is now in SEVENTH table, second row, second (non-header) cell, in bold
 # JULY 2001: Data is in fourth table's fourth TD
@@ -217,22 +218,15 @@ sub _extract_data { my $doc = shift;
 	$token = $p->get_token or return undef;
 	return undef if @$token[0] ne 'T';
 
-	return @$token[1] =~ /^[\d.]+$/ ? @$token[1] : undef;
+	return @$token[1] =~ /^[\d.,]+$/ ? @$token[1] : undef;
 }
 
 
-# Checking offline....
-# {local *IN;
-# open IN, 'C:\Documents and Settings\Administrator\My Documents\Yahoo! Finance - Currency Conversion.htm' or die;
-# read IN,$_,-s IN;
-# close IN;
-# warn &_extract_data ($_);
-# online: print convert(1,'HUF','GBP');
-# exit;}
+
 
 =head1 EXPORTS
 
-None by default.
+None.
 
 =head1 REVISIONS
 

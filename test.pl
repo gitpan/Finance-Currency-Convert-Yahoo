@@ -10,6 +10,10 @@ BEGIN { plan tests => 1 };
 use Finance::Currency::Convert::Yahoo;
 ok(1); # If we made it this far, we're ok.
 
+#$CHAT=1;
+#print convert(10,'GBP','HUF');
+# exit;
+
 #########################
 
 # Insert your test code below, the Test module is use()ed here so read
