@@ -2,8 +2,8 @@ package Finance::Currency::Convert::Yahoo;
 
 use vars qw/$VERSION $DATE $CHAT %currencies/;
 
-$VERSION = 0.04;
-$DATE = "28 January 2003 22:33 CET";
+$VERSION = 0.041;
+$DATE = "03 April 2003 21:02";
 
 =head1 NAME
 
@@ -154,11 +154,6 @@ sub convert { my ($amount, $from, $to) = (shift,shift,shift);
 # Returns:
 #
 sub _get_document { my ($amount,$from,$to) = (shift,shift,shift);
-my $doc;
-open IN,"test.html" or die;
-read IN,$doc,-s IN;
-close IN;
-return $doc;
 	die "get_document requires a \$amount,\$from_currency,\$target_currency arrity" unless (defined $amount and defined $to and defined $from);
 
 	my $ua = LWP::UserAgent->new;												# Create a new UserAgent
