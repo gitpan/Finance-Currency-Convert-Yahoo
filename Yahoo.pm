@@ -1,7 +1,9 @@
 package Finance::Currency::Convert::Yahoo;
 
-our $VERSION = 0.032;
-our $DATE = "Fri Dec  7 18:53:00 2001 CET";
+use vars qw/$VERSION $DATE $CHAT %currencies/;
+
+$VERSION = 0.04;
+$DATE = "28 January 2003 22:33 CET";
 
 =head1 NAME
 
@@ -31,7 +33,7 @@ use HTML::TokeParser;
 # Glabal variables
 #
 
-our $CHAT = 0;		# Set for real-time notes to STDERR
+$CHAT = 0;		# Set for real-time notes to STDERR
 
 our %currencies = (
 	'AFA'=>'Afghanistan Afghani', 	'ALL'=>'Albanian Lek', 	'DZD'=>'Algerian Dinar',
@@ -152,6 +154,11 @@ sub convert { my ($amount, $from, $to) = (shift,shift,shift);
 # Returns:
 #
 sub _get_document { my ($amount,$from,$to) = (shift,shift,shift);
+my $doc;
+open IN,"test.html" or die;
+read IN,$doc,-s IN;
+close IN;
+return $doc;
 	die "get_document requires a \$amount,\$from_currency,\$target_currency arrity" unless (defined $amount and defined $to and defined $from);
 
 	my $ua = LWP::UserAgent->new;												# Create a new UserAgent
@@ -182,33 +189,48 @@ sub _get_document { my ($amount,$from,$to) = (shift,shift,shift);
 # PRIVATE SUB _extract_data
 # Accept: HTML doc as arg
 # Return amount on success, undef on failure
+# JAN  2003: Data is now in SEVENTH table, second row, second (non-header) cell, in bold
 # JULY 2001: Data is in fourth table's fourth TD
 # DEC  2001: Data is in FIFTH table
 #
 sub _extract_data { my $doc = shift;
 	my $token;
 	my $p = HTML::TokeParser->new(\$doc) or die "Couldn't create TokePraser: $!";
-	for (1..5){
+	# Seventh TABLE
+	for (1..7){
 		while ($token = $p->get_token
 			and not (@$token[0] eq 'S' and @$token[1] eq 'table')
 		){}
 	}
-	for (0..4){
+	# Second TR
+	for (1..2){
+		while ($token = $p->get_token
+			and not (@$token[0] eq 'S' and @$token[1] eq 'tr')
+		){}
+	}
+	# Second TD
+	for (1..2){
 		while ($token = $p->get_token
 			and not (@$token[0] eq 'S' and @$token[1] eq 'td')
 		){}
 	}
 	$token = $p->get_token or return undef;
+	return undef if @$token[0] ne 'S' and @$token[1] ne 'b';
+
+	$token = $p->get_token or return undef;
+	return undef if @$token[0] ne 'T';
+
 	return @$token[1] =~ /^[\d.]+$/ ? @$token[1] : undef;
 }
+
 
 # Checking offline....
 # {local *IN;
 # open IN, 'C:\Documents and Settings\Administrator\My Documents\Yahoo! Finance - Currency Conversion.htm' or die;
-# @_  = <IN>;
+# read IN,$_,-s IN;
 # close IN;
-# warn &_extract_data (join'', @_);
-# online: print convert(1,'USD','GBP');
+# warn &_extract_data ($_);
+# online: print convert(1,'HUF','GBP');
 # exit;}
 
 =head1 EXPORTS
@@ -217,18 +239,7 @@ None by default.
 
 =head1 REVISIONS
 
-=over 4
-
-=item 0.02 Fri Jul 13 16:03:23 2001 BST
-
-Public release after 0.01 was born 1 hour earlier.
-
-=item 0.03 Fri Dec  7 18:18:53 2001 CET
-
-Corrected errors generated when couldn't connet to Yahoo.
-Thanks to Stephen.
-
-=back
+Please see the enclosed file CHANGES.
 
 =head1 SEE ALSO
 
