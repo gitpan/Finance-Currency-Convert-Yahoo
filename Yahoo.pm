@@ -2,8 +2,8 @@ package Finance::Currency::Convert::Yahoo;
 
 use vars qw/$VERSION $DATE $CHAT %currencies/;
 
-$VERSION = 0.043;
-$DATE = "03 June 2003 11:00";
+$VERSION = 0.044;
+$DATE = "17 November 2004 18:15";
 
 =head1 NAME
 
@@ -14,7 +14,7 @@ Finance::Currency::Convert::Yahoo - convert currencies using Yahoo
 	use Finance::Currency::Convert::Yahoo;
 	$Finance::Currency::Convert::Yahoo::CHAT = 1;
 	$_ = Finance::Currency::Convert::Yahoo::convert(1,'USD','GBP');
-	print "Is $_\n" if defined $_;
+	print defined($_)? "Is $_\n" : "Error.";
 
 =head1 DESCRIPTION
 
@@ -132,14 +132,18 @@ sub convert { my ($amount, $from, $to) = (shift,shift,shift);
 		last if defined $doc;
 	}
 	if (defined $doc){
-		$result = _extract_data($doc);
-		warn "Got doc, result is $result" if $CHAT;
+		if ($result = _extract_data($doc)){
+			warn "Got doc, result is $result" if defined $CHAT;
+		}
 	}
 	if (defined $doc and defined $result){
 		warn "Result:$result\n" if defined $result and defined $CHAT;
 		return $result;
 	} elsif (defined $doc and not defined $result){
 		carp "Connected to Yahoo but could not read the page: sorry" if defined $CHAT;
+open OUT,">C:/temp/yahoo.html";
+print OUT $doc;
+close OUT;
 		return undef;
 	} else {
 		carp "Could not connect to Yahoo" if defined $CHAT;
@@ -152,7 +156,8 @@ sub convert { my ($amount, $from, $to) = (shift,shift,shift);
 #
 # PRIVATE SUB get_document
 # Accepts: amount, starting currency, target currency
-# Returns:
+# Returns: HTML content
+# URI: http://finance.yahoo.com/currency/convert?amt=1&from=GBP&to=HUF&submit=Convert
 #
 sub _get_document { my ($amount,$from,$to) = (shift,shift,shift);
 	die "get_document requires a \$amount,\$from_currency,\$target_currency arrity" unless (defined $amount and defined $to and defined $from);
@@ -161,10 +166,11 @@ sub _get_document { my ($amount,$from,$to) = (shift,shift,shift);
 	$ua->agent('Mozilla/25.'.(localtime)." (PERL ".__PACKAGE__." $VERSION");	# Give it a type name
 
 	my $url =
-		'http://finance.yahoo.com/m5?'
-		. 'a='.$amount
-		. '&s='.$from
-		. '&t='.$to
+		'http://finance.yahoo.com/currency/convert?'
+		. 'amt='.$amount
+		. '&from='.$from
+		. '&to='.$to
+		. '&submit=Convert'
 	;
 	warn "Attempting to access <$url> ...\n" if $CHAT;
 
@@ -185,6 +191,7 @@ sub _get_document { my ($amount,$from,$to) = (shift,shift,shift);
 # PRIVATE SUB _extract_data
 # Accept: HTML doc as arg
 # Return amount on success, undef on failure
+# NOV  2004: Fifth yfnc_tabledata1 class TD, and bold
 # MAY  2003: Sloopy errors fixed. Sorry.
 # APR  2003: Data is now in SIXTH table, second row, second (non-header) cell, in bold
 # JAN  2003: Data is now in SEVENTH table, second row, second (non-header) cell, in bold
@@ -194,23 +201,13 @@ sub _get_document { my ($amount,$from,$to) = (shift,shift,shift);
 sub _extract_data { my $doc = shift;
 	my $token;
 	my $p = HTML::TokeParser->new(\$doc) or die "Couldn't create TokePraser: $!";
-	# Sixth TABLE
-	for (1..6){
-		while ($token = $p->get_token
-			and not (@$token[0] eq 'S' and @$token[1] eq 'table')
-		){}
-	}
-	# Second TR
-	for (1..2){
-		while ($token = $p->get_token
-			and not (@$token[0] eq 'S' and @$token[1] eq 'tr')
-		){}
-	}
-	# Second TD
-	for (1..2){
-		while ($token = $p->get_token
-			and not (@$token[0] eq 'S' and @$token[1] eq 'td')
-		){}
+	# Fifth TD and class is 'yfnc_tabledata1'
+	for (1..5){
+		while ($token = $p->get_token and not (
+				@$token[0] eq 'S' and @$token[1] eq 'td'
+				and @$token[2]->{class}
+				and @$token[2]->{class} eq 'yfnc_tabledata1'
+		) ){}
 	}
 	$token = $p->get_token or return undef;
 	return undef if @$token[0] ne 'S' and @$token[1] ne 'b';
@@ -232,17 +229,22 @@ None.
 
 Please see the enclosed file CHANGES.
 
+=head1 PROBLEMS?
+
+If this doesn't work, Yahoo have probably changed their HTML format.
+Let me know and I'll fix the code. Or by all means send a patch.
+
 =head1 SEE ALSO
 
 L<LWP::UserAgent>, L<HTTP::Request>, L<HTML::TokeParser>.
 
 =head1 AUTHOR
 
-Lee Goddard L<lgoddard@cpan.org|mailto:lgoddard@cpan.org>.
+Lee Goddard, lgoddard -at- cpan -dot- org.
 
 =head1 COPYRIGHT
 
-Copyright (C) Lee Goddard, 2001 - All Rights Reserved.
+Copyright (C) Lee Goddard, 2001, ff. - All Rights Reserved.
 
 This library is free software and may be used only under the same terms as Perl itself.
 
