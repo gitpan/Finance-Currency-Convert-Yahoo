@@ -10,6 +10,18 @@ BEGIN { plan tests => 1 };
 use Finance::Currency::Convert::Yahoo;
 ok(1); # If we made it this far, we're ok.
 
+print <<"__STOP__";
+
+If you are online, and want a test, please run the following:
+
+	use Finance::Currency::Convert::Yahoo;
+	print Finance::Currency::Convert::Yahoo::convert(1,'USD','GBP');
+
+Ta.
+
+
+__STOP__
+
 #########################
 
 # Insert your test code below, the Test module is use()ed here so read

@@ -1,7 +1,7 @@
 package Finance::Currency::Convert::Yahoo;
 
-our $VERSION = 0.02;
-our $DATE = "Fri Jul 13 16:03:23 2001 BST";
+our $VERSION = 0.032;
+our $DATE = "Fri Dec  7 18:53:00 2001 CET";
 
 =head1 NAME
 
@@ -10,7 +10,9 @@ Finance::Currency::Convert::Yahoo - convert currencies using Yahoo
 =head1 SYNOPSIS
 
 	use Finance::Currency::Convert::Yahoo;
-	print Finance::Currency::Convert::Yahoo::convert(1,'USD','GBP');
+	$Finance::Currency::Convert::Yahoo::CHAT = 1;
+	$_ = Finance::Currency::Convert::Yahoo::convert(1,'USD','GBP');
+	print "Is $_\n" if defined $_;
 
 =head1 DESCRIPTION
 
@@ -19,6 +21,7 @@ Using Finance.Yahoo.com, converts a sum between two currencies.
 =cut
 
 use strict;
+use Carp;
 use warnings;
 use LWP::UserAgent;
 use HTTP::Request;
@@ -107,32 +110,44 @@ In more detail, the module accesses C<http://finance.yahoo.com/m5?a=amount&s=sta
 where C<start> is the currency being converted, C<to> is the
 target currency, and C<amount> is the amount being converted.
 The latter is a number; the former two codes defined in our
-C<%currencies> hash.
+C<%currencies> hash. (Last checked 07 December 2001).
 
 
 =cut
 
 sub convert { my ($amount, $from, $to) = (shift,shift,shift);
 	die "Please call as ...::convert(\$amount,\$from,\$to) " unless (defined $amount and defined $from and defined $to);
-	warn "No such currency code as <$from>." and return undef if not exists $currencies{$from};
-	warn "No such currency code as <$to>." and return undef if not exists $currencies{$to};
-	warn "Please supply a positive sum to convert <received $amount>." and return undef if $amount<0;
+	carp "No such currency code as <$from>." and return undef if not exists $currencies{$from};
+	carp "No such currency code as <$to>." and return undef if not exists $currencies{$to};
+	carp "Please supply a positive sum to convert <received $amount>." and return undef if $amount<0;
 	warn "Converting <$amount> from <$from> to <$to> " if $CHAT;
-	my $result;
+	my ($doc,$result);
 	for my $attempt (0..3){
 		warn "Attempt $attempt ...\n" if $CHAT;
-		my $doc = _get_document($amount,$from,$to);
-		$result = _extract_data($doc);
-		last if defined $result;
+		$doc = _get_document($amount,$from,$to);
+		# Can't say "last if defined $doc" as $doc may be a Yahoo 404-like error?
+		last if defined $doc;
 	}
-	warn "Result:$result\n" if defined $result;
-	return $amount * $result;
+	if (defined $doc){
+		$result = _extract_data($doc);
+		warn "Got doc" if $CHAT;
+	}
+	if (defined $doc and defined $result){
+		warn "Result:$result\n" if defined $result and defined $CHAT;
+		return $amount * $result;
+	} elsif (defined $doc and not defined $result){
+		carp "Connected to Yahoo but could not read the page: sorry" if defined $CHAT;
+		return undef;
+	} else {
+		carp "Could not connect to Yahoo" if defined $CHAT;
+		return undef;
+	}
 }
 
 
 
 #
-# SUB get_document
+# PRIVATE SUB get_document
 # Accepts: amount, starting currency, target currency
 # Returns:
 #
@@ -164,12 +179,16 @@ sub _get_document { my ($amount,$from,$to) = (shift,shift,shift);
 
 
 #
-# Data is in fourth table's fourth TD
+# PRIVATE SUB _extract_data
+# Accept: HTML doc as arg
+# Return amount on success, undef on failure
+# JULY 2001: Data is in fourth table's fourth TD
+# DEC  2001: Data is in FIFTH table
 #
 sub _extract_data { my $doc = shift;
 	my $token;
 	my $p = HTML::TokeParser->new(\$doc) or die "Couldn't create TokePraser: $!";
-	for (0..3){
+	for (1..5){
 		while ($token = $p->get_token
 			and not (@$token[0] eq 'S' and @$token[1] eq 'table')
 		){}
@@ -179,13 +198,37 @@ sub _extract_data { my $doc = shift;
 			and not (@$token[0] eq 'S' and @$token[1] eq 'td')
 		){}
 	}
-	$token = $p->get_token;
+	$token = $p->get_token or return undef;
 	return @$token[1] =~ /^[\d.]+$/ ? @$token[1] : undef;
 }
+
+# Checking offline....
+# {local *IN;
+# open IN, 'C:\Documents and Settings\Administrator\My Documents\Yahoo! Finance - Currency Conversion.htm' or die;
+# @_  = <IN>;
+# close IN;
+# warn &_extract_data (join'', @_);
+# online: print convert(1,'USD','GBP');
+# exit;}
 
 =head1 EXPORTS
 
 None by default.
+
+=head1 REVISIONS
+
+=over 4
+
+=item 0.02 Fri Jul 13 16:03:23 2001 BST
+
+Public release after 0.01 was born 1 hour earlier.
+
+=item 0.03 Fri Dec  7 18:18:53 2001 CET
+
+Corrected errors generated when couldn't connet to Yahoo.
+Thanks to Stephen.
+
+=back
 
 =head1 SEE ALSO
 
@@ -203,6 +246,5 @@ This library is free software and may be used only under the same terms as Perl 
 
 =cut
 
-#print convert(1,'USD','GBP');
 1;
 __END__

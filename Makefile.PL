@@ -8,6 +8,7 @@ WriteMakefile(
 		LWP::UserAgent => 0.1,
 		HTTP::Request => 0.1,
 		HTML::TokeParser => 0.1,
+		Carp => 0.0,
 		},
     ($] >= 5.005 ?    ## Add these new keywords supported since 5.005
       (ABSTRACT_FROM => 'Yahoo.pm', # retrieve abstract from module
