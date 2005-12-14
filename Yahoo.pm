@@ -2,8 +2,8 @@ package Finance::Currency::Convert::Yahoo;
 
 use vars qw/$VERSION $DATE $CHAT %currencies/;
 
-$VERSION = 0.045;
-$DATE = "17 November 2004 18:20";
+$VERSION = 0.2;
+$DATE = "14 December 2005";
 
 =head1 NAME
 
@@ -15,6 +15,13 @@ Finance::Currency::Convert::Yahoo - convert currencies using Yahoo
 	$Finance::Currency::Convert::Yahoo::CHAT = 1;
 	$_ = Finance::Currency::Convert::Yahoo::convert(1,'USD','GBP');
 	print defined($_)? "Is $_\n" : "Error.";
+	exit;
+
+	# See the currencies in a dirty way:
+	use Finance::Currency::Convert::Yahoo;
+	use Data::Dumper;
+	warn %Finance::Currency::Convert::Yahoo::currencies;
+	exit;
 
 =head1 DESCRIPTION
 
@@ -27,7 +34,6 @@ use Carp;
 use warnings;
 use LWP::UserAgent;
 use HTTP::Request;
-use HTML::TokeParser;
 
 #
 # Glabal variables
@@ -35,7 +41,8 @@ use HTML::TokeParser;
 
 $CHAT = 0;		# Set for real-time notes to STDERR
 
-our %currencies = (
+# Should have been %CURRENCIES but too late now.
+our %CURRENCIES = %currencies = (
 	'AFA'=>'Afghanistan Afghani', 	'ALL'=>'Albanian Lek', 	'DZD'=>'Algerian Dinar',
 	'ADF'=>'Andorran Franc', 	'ADP'=>'Andorran Peseta', 	'ARS'=>'Argentine Peso',
 	'AWG'=>'Aruba Florin', 	'AUD'=>'Australian Dollar', 	'ATS'=>'Austrian Schilling',
@@ -94,7 +101,6 @@ our %currencies = (
 );
 
 
-
 =head1 USE
 
 Call the module's C<&convert> routine, supplying three arguments:
@@ -108,12 +114,16 @@ In the event that attempts to convert fail, you will recieve C<undef>
 in response, with errors going to STDERR, and notes displayed if
 the modules global C<$CHAT> is defined.
 
-In more detail: the module accesses C<http://finance.yahoo.com/m5?a=amount&s=start&t=to>,
-where C<start> is the currency being converted, C<to> is the
-target currency, and C<amount> is the amount being converted.
-The latter is a number; the former two codes defined in our
-C<%currencies> hash. (For the date this was last checked, C<print $DATE>).
+=head2 SUBROUTINE convert
 
+	$value = &convert( $amount_to_convert, $from, $to);
+
+Requires the sum to convert, and two symbols to represent the source
+and target currencies.
+
+In more detail, access L<http://finance.yahoo.com/d/quotes.csv?s=GBPEUR=X&f=l1>,
+where the value of C<s> (in the example, C<GBPUSD>) is the value of the source
+and target currencies, and the rest is stuff I've not looked into....
 
 =cut
 
@@ -123,10 +133,39 @@ sub convert { my ($amount, $from, $to) = (shift,shift,shift);
 	carp "No such currency code as <$to>." and return undef if not exists $currencies{$to};
 	carp "Please supply a positive sum to convert <received $amount>." and return undef if $amount<0;
 	warn "Converting <$amount> from <$from> to <$to> " if $CHAT;
+	my ($value);
+	for my $attempt (0..3){
+		warn "Attempt $attempt ...\n" if $CHAT;
+		$value = _get_document_csv($amount,$from,$to);
+		# Can't really say "last if defined $doc" as $doc may be a Yahoo 404-like error?
+		last if defined $value;
+	}
+	return $value;
+}
+
+=head2 DEPRECATED SUBROUTINE deprecated_convert
+
+The old C<convert> routine: accesses C<http://finance.yahoo.com/m5?a=amount&s=start&t=to>,
+where C<start> is the currency being converted, C<to> is the
+target currency, and C<amount> is the amount being converted.
+The latter is a number; the former two codes defined in our
+C<%currencies> hash. (For the date this was last checked, C<print $DATE>).
+
+=cut
+
+sub deprecated_convert { my ($amount, $from, $to) = (shift,shift,shift);
+	require HTML::TokeParser;
+	import HTML::TokeParser;
+	die 'You not have HTML::TokeParser...?' unless HTML::TokeParser->VERSION;
+	die "Please call as ...::convert(\$amount,\$from,\$to) " unless (defined $amount and defined $from and defined $to);
+	carp "No such currency code as <$from>." and return undef if not exists $currencies{$from};
+	carp "No such currency code as <$to>." and return undef if not exists $currencies{$to};
+	carp "Please supply a positive sum to convert <received $amount>." and return undef if $amount<0;
+	warn "Converting <$amount> from <$from> to <$to> " if $CHAT;
 	my ($doc,$result);
 	for my $attempt (0..3){
 		warn "Attempt $attempt ...\n" if $CHAT;
-		$doc = _get_document($amount,$from,$to);
+		$doc = _get_document_html($amount,$from,$to);
 		# Can't really say "last if defined $doc"
 		# as $doc may be a Yahoo 404-like error?
 		last if defined $doc;
@@ -149,14 +188,53 @@ sub convert { my ($amount, $from, $to) = (shift,shift,shift);
 }
 
 
+#
+# PRIVATE SUB get_document_csv
+# Accepts: amount, starting currency, target currency
+# Returns: HTML content
+# URI: http://finance.yahoo.com/d/quotes.csv?s=GBPEUR=X&f=l1
+#
+sub _get_document_csv { my ($amount,$from,$to) = (shift,shift,shift);
+	die "get_document requires a \$amount,\$from_currency,\$target_currency arrity" unless (defined $amount and defined $to and defined $from);
+
+	my $ua = LWP::UserAgent->new;												# Create a new UserAgent
+	$ua->agent('Mozilla/25.'.(localtime)." (PERL ".__PACKAGE__." $VERSION");	# Give it a type name
+
+	my $url =
+		'http://finance.yahoo.com/d/quotes.csv?'
+		. 's='.$from.$to
+		. '=X&f=l1'
+	;
+	warn "Attempting to access <$url> ...\n" if $CHAT;
+
+	# Format URL request
+	my $req = new HTTP::Request ('GET',$url) or die "...could not GET.\n" and return undef;
+	my $res = $ua->request($req);						# $res is the object UA returned
+	if (not $res->is_success()) {						# If successful
+		warn"...failed to retrieve currency document from Yahoo...\nTried: $url\n";
+		return undef;
+	}
+	warn "...ok.\n" if $CHAT;
+
+	my $r = $res->content;
+	$r =~ s/^\s*([\d.]+)\s*$/$1/sg;
+	if ($r eq ''){
+		warn "...document contained no data/unexpected data\n";
+		return undef;
+	}
+
+	return $amount * $r;
+}
+
+
 
 #
-# PRIVATE SUB get_document
+# PRIVATE SUB get_document_html
 # Accepts: amount, starting currency, target currency
 # Returns: HTML content
 # URI: http://finance.yahoo.com/currency/convert?amt=1&from=GBP&to=HUF&submit=Convert
 #
-sub _get_document { my ($amount,$from,$to) = (shift,shift,shift);
+sub _get_document_html { my ($amount,$from,$to) = (shift,shift,shift);
 	die "get_document requires a \$amount,\$from_currency,\$target_currency arrity" unless (defined $amount and defined $to and defined $from);
 
 	my $ua = LWP::UserAgent->new;												# Create a new UserAgent
@@ -175,7 +253,7 @@ sub _get_document { my ($amount,$from,$to) = (shift,shift,shift);
 	my $req = new HTTP::Request ('GET',$url) or die "...could not GET.\n" and return undef;
 	my $res = $ua->request($req);						# $res is the object UA returned
 	if (not $res->is_success()) {						# If successful
-		warn"...failed.\n" if $CHAT;
+		warn"...failed to retrieve currency document.\n" if $CHAT;
 		return undef
 	}
 	warn "...ok.\n" if $CHAT;
@@ -228,12 +306,15 @@ Please see the enclosed file CHANGES.
 
 =head1 PROBLEMS?
 
-If this doesn't work, Yahoo have probably changed their HTML format.
+If this doesn't work, Yahoo have probably changed their URI or HTML format.
 Let me know and I'll fix the code. Or by all means send a patch.
+Please don't just post a bad review on CPAN, I don't get CC'd them.
 
 =head1 SEE ALSO
 
-L<LWP::UserAgent>, L<HTTP::Request>, L<HTML::TokeParser>.
+L<LWP::UserAgent>: L<HTTP::Request>;
+L<http://www.macosxhints.com/article.php?story=20050622055810252>;
+L<http://www.gummy-stuff.org/Yahoo-data.htm>.
 
 =head1 AUTHOR
 
@@ -241,12 +322,18 @@ Lee Goddard, lgoddard -at- cpan -dot- org.
 
 =head1 COPYRIGHT
 
-Copyright (C) Lee Goddard, 2001, ff. - All Rights Reserved.
+Copyright (C) Lee Goddard, 2001, 2005, ff. - All Rights Reserved.
 
 This library is free software and may be used only under the same terms as Perl itself.
 
 =cut
 
+
+# $Finance::Currency::Convert::Yahoo::CHAT=1;
+# print Finance::Currency::Convert::Yahoo::convert(1,'EUR','GBP');
+
+
 1;
+
 __END__
 

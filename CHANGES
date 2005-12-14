@@ -1,19 +1,25 @@
+VERSION 0.2
+
+	* Updated by Lee Goddard <lgoddard -at- cpan -dot- org>:
+	  no longer parse HTML but CSV as suggested many moons ago
+	  by Robert Rothenberg (?).
+	
 VERSION 0.045
 
-	* Updated by Lee Goddard <lgoddard -at- cpan -dot- org>
+	* HTML parsing updated by Lee Goddard <lgoddard -at- cpan -dot- org>
 
 VERSION 0.044
 
-	* Updated by Lee Goddard <lgoddard -at- cpan -dot- org>
+	* HTML parsing updated by Lee Goddard <lgoddard -at- cpan -dot- org>
 
 VERSION 0.043
 
-	* Updated by Cameron G <ritontor@icenet.com.au>
+	* HTML parsing updated by Cameron G <ritontor@icenet.com.au>
 
 VERSION 0.042
 
-	* Updated by Wayne A. Arthurton <warthurton -at- arthurton -dot- com>
+	* HTML parsing updated by Wayne A. Arthurton <warthurton -at- arthurton -dot- com>
 
 VERSION 0.41
 
-	* Updated by Lee Goddard <lgoddard -at- cpan -dot- org>
+	* HTML parsing updated by Lee Goddard <lgoddard -at- cpan -dot- org>
